@@ -10,7 +10,7 @@ $users = array();
 
 try {
     $stmt = $pdo->query(
-        'SELECT user_id, username, first_name, last_name, role, active, created_at
+        'SELECT user_id, username, first_name, last_name, role, active, password_hash, created_at
          FROM users
          ORDER BY last_name, first_name'
     );
@@ -26,7 +26,7 @@ require_once APP_ROOT . '/includes/header.php';
 <div class="page-header">
     <div>
         <h1>Mitarbeiterverwaltung</h1>
-        <p class="muted">Nur Administratoren dürfen Benutzer anlegen und verwalten.</p>
+        <p class="muted">Administratoren legen Konten an und deaktivieren sie. Passwörter setzen nur die Mitarbeiter selbst.</p>
     </div>
     <a class="btn btn-primary" href="<?php echo e(BASE_URL); ?>/users/create.php">Mitarbeiter anlegen</a>
 </div>
@@ -40,6 +40,7 @@ require_once APP_ROOT . '/includes/header.php';
                     <th>Benutzername</th>
                     <th>Rolle</th>
                     <th>Status</th>
+                    <th>Passwort</th>
                     <th>Angelegt</th>
                     <th></th>
                 </tr>
@@ -47,7 +48,7 @@ require_once APP_ROOT . '/includes/header.php';
             <tbody>
                 <?php if (count($users) === 0): ?>
                     <tr>
-                        <td colspan="6">Keine Benutzer vorhanden.</td>
+                        <td colspan="7">Keine Benutzer vorhanden.</td>
                     </tr>
                 <?php endif; ?>
 
@@ -65,6 +66,13 @@ require_once APP_ROOT . '/includes/header.php';
                                 <span class="badge badge-active">aktiv</span>
                             <?php else: ?>
                                 <span class="badge badge-inactive">deaktiviert</span>
+                            <?php endif; ?>
+                        </td>
+                        <td>
+                            <?php if (userHasPasswordSet($user)): ?>
+                                <span class="badge badge-active">gesetzt</span>
+                            <?php else: ?>
+                                <span class="badge badge-inactive">offen</span>
                             <?php endif; ?>
                         </td>
                         <td><?php echo e(formatDateDe($user['created_at'])); ?></td>

@@ -18,13 +18,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $username = postValue('username', '');
         $firstName = postValue('first_name', '');
         $lastName = postValue('last_name', '');
-        $password = isset($_POST['password']) ? $_POST['password'] : '';
-        $passwordError = validatePassword($password);
 
-        if ($username === '' || $firstName === '' || $lastName === '' || $password === '') {
+        if ($username === '' || $firstName === '' || $lastName === '') {
             $error = 'Bitte alle Felder ausfüllen.';
-        } elseif ($passwordError !== '') {
-            $error = $passwordError;
         } else {
             $stmt = $pdo->prepare('SELECT user_id FROM users WHERE username = ? LIMIT 1');
             $stmt->execute(array($username));
@@ -32,19 +28,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($stmt->fetch()) {
                 $error = 'Dieser Benutzername ist bereits vergeben.';
             } else {
-                $passwordHash = password_hash($password, PASSWORD_DEFAULT);
-
                 try {
+                    $pdo->beginTransaction();
+
                     $stmt = $pdo->prepare(
                         "INSERT INTO users
                             (username, first_name, last_name, password_hash, role, active)
                          VALUES
-                            (?, ?, ?, ?, 'employee', 1)"
+                            (?, ?, ?, NULL, 'employee', 1)"
                     );
-                    $stmt->execute(array($username, $firstName, $lastName, $passwordHash));
-                    setFlash('success', 'Der Mitarbeiter wurde angelegt.');
-                    redirect('/users/index.php');
+                    $stmt->execute(array($username, $firstName, $lastName));
+                    $userId = (int) $pdo->lastInsertId();
+
+                    $token = createPasswordToken($pdo, $userId);
+                    $pdo->commit();
+
+                    storeOneTimeActivation($username, $token);
+                    setFlash('success', 'Der Mitarbeiter wurde angelegt. Bitte den Aktivierungscode einmalig weitergeben.');
+                    redirect('/users/activation.php');
                 } catch (PDOException $e) {
+                    $pdo->rollBack();
                     error_log('Mitarbeiter anlegen fehlgeschlagen: ' . $e->getMessage());
                     $error = 'Der Mitarbeiter konnte nicht angelegt werden.';
                 }
@@ -59,7 +62,7 @@ require_once APP_ROOT . '/includes/header.php';
 <div class="page-header">
     <div>
         <h1>Mitarbeiter anlegen</h1>
-        <p class="muted">Neue Benutzer erhalten die Rolle Mitarbeiter.</p>
+        <p class="muted">Es wird kein Passwort vergeben. Der Mitarbeiter setzt es selbst über einen Einmal-Aktivierungscode.</p>
     </div>
 </div>
 
@@ -67,10 +70,6 @@ require_once APP_ROOT . '/includes/header.php';
     <?php if ($error !== ''): ?>
         <div class="alert alert-error"><?php echo e($error); ?></div>
     <?php endif; ?>
-
-    <p class="hint">
-        Das Passwort muss mindestens 4 Zeichen lang sein und mindestens einen Kleinbuchstaben sowie eine Zahl enthalten.
-    </p>
 
     <form method="post" action="<?php echo e(BASE_URL); ?>/users/create.php">
         <?php echo csrfField(); ?>
@@ -84,11 +83,8 @@ require_once APP_ROOT . '/includes/header.php';
         <label for="last_name">Nachname</label>
         <input type="text" id="last_name" name="last_name" value="<?php echo e($lastName); ?>" required>
 
-        <label for="password">Passwort</label>
-        <input type="password" id="password" name="password" required>
-
         <div class="form-actions">
-            <button type="submit" class="btn btn-primary">Speichern</button>
+            <button type="submit" class="btn btn-primary">Anlegen und Aktivierungscode erzeugen</button>
             <a class="btn btn-secondary" href="<?php echo e(BASE_URL); ?>/users/index.php">Abbrechen</a>
         </div>
     </form>

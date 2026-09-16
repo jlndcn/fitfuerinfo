@@ -32,6 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (
                 $user
                 && (int) $user['active'] === 1
+                && userHasPasswordSet($user)
                 && password_verify($password, $user['password_hash'])
             ) {
                 session_regenerate_id(true);
@@ -91,6 +92,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <button type="submit" class="btn btn-primary">Anmelden</button>
         </form>
+
+        <p class="hint" style="margin-top: 18px;">
+            Noch kein Passwort? Verwenden Sie den Aktivierungslink, den Sie vom Administrator erhalten haben.
+        </p>
     </div>
 </body>
 </html>

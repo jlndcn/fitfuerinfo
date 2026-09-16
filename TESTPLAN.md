@@ -42,6 +42,24 @@ Empfohlene Testdaten:
 2. Direkt aufrufen: `dashboard.php`, `users/index.php`, `courses/index.php`, `rooms/index.php`, `bookings/index.php`.
 3. **Erwartung:** Weiterleitung zu `login.php`.
 
+### Mitarbeiter legt eigenes Passwort fest
+
+1. Als Admin einen Mitarbeiter **ohne Passwortfeld** anlegen.
+2. Den einmal angezeigten Aktivierungslink notieren.
+3. Abmelden und `set_password.php` mit diesem Code öffnen.
+4. Ein gültiges Passwort setzen (mind. 4 Zeichen, Kleinbuchstabe, Zahl).
+5. **Erwartung:** Login mit diesem Passwort funktioniert. Derselbe Code ist danach ungültig.
+
+### Admin kennt kein Mitarbeiterpasswort
+
+1. In `users/create.php` und `users/edit.php` nach einem Passwortfeld suchen.
+2. **Erwartung:** Es gibt keines. Es kann nur ein neuer Aktivierungscode erzeugt werden.
+
+### Konto ohne gesetztes Passwort
+
+1. Einen neu angelegten Mitarbeiter vor der Passwortvergabe am Login versuchen.
+2. **Erwartung:** Kein Login, allgemeine Fehlermeldung.
+
 ---
 
 ## KURS
@@ -80,6 +98,12 @@ Empfohlene Testdaten:
 1. Für den Kurs eine zukünftige Raumbuchung anlegen.
 2. Kurs löschen oder deaktivieren versuchen.
 3. **Erwartung:** Verständliche Fehlermeldung, Kurs bleibt erhalten.
+
+### Kurs nur mit vergangenen Buchungen
+
+1. Einen Kurs verwenden, der ausschließlich vergangene Buchungen hat.
+2. Löschen versuchen.
+3. **Erwartung:** Kein hartes Löschen, weil die Buchungshistorie über den Fremdschlüssel erhalten bleiben muss. Der Kurs wird deaktiviert.
 
 ---
 

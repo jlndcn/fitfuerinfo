@@ -203,6 +203,128 @@ function validatePassword($password)
     return '';
 }
 
+function generateActivationToken()
+{
+    if (function_exists('openssl_random_pseudo_bytes')) {
+        return bin2hex(openssl_random_pseudo_bytes(32));
+    }
+
+    return sha1(uniqid((string) mt_rand(), true) . microtime(true));
+}
+
+function hashActivationToken($token)
+{
+    return hash('sha256', $token);
+}
+
+function invalidatePasswordTokens($pdo, $userId)
+{
+    $stmt = $pdo->prepare(
+        'UPDATE password_tokens
+         SET used_at = NOW()
+         WHERE user_id = ?
+           AND used_at IS NULL'
+    );
+    $stmt->execute(array($userId));
+}
+
+function createPasswordToken($pdo, $userId)
+{
+    invalidatePasswordTokens($pdo, $userId);
+
+    $token = generateActivationToken();
+    $tokenHash = hashActivationToken($token);
+
+    $stmt = $pdo->prepare(
+        'INSERT INTO password_tokens (user_id, token_hash, expires_at)
+         VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))'
+    );
+    $stmt->execute(array($userId, $tokenHash));
+
+    return $token;
+}
+
+function findValidPasswordToken($pdo, $token)
+{
+    if ($token === '') {
+        return null;
+    }
+
+    $stmt = $pdo->prepare(
+        'SELECT
+            t.token_id,
+            t.user_id,
+            u.username,
+            u.active
+         FROM password_tokens t
+         INNER JOIN users u ON u.user_id = t.user_id
+         WHERE t.token_hash = ?
+           AND t.used_at IS NULL
+           AND t.expires_at > NOW()
+         LIMIT 1'
+    );
+    $stmt->execute(array(hashActivationToken($token)));
+    $row = $stmt->fetch();
+
+    if (!$row) {
+        return null;
+    }
+
+    return $row;
+}
+
+function markPasswordTokenUsed($pdo, $tokenId)
+{
+    $stmt = $pdo->prepare(
+        'UPDATE password_tokens
+         SET used_at = NOW()
+         WHERE token_id = ?'
+    );
+    $stmt->execute(array($tokenId));
+}
+
+function storeOneTimeActivation($username, $token)
+{
+    $_SESSION['one_time_activation'] = array(
+        'username' => $username,
+        'token' => $token
+    );
+}
+
+function takeOneTimeActivation()
+{
+    if (!isset($_SESSION['one_time_activation']) || !is_array($_SESSION['one_time_activation'])) {
+        return null;
+    }
+
+    $data = $_SESSION['one_time_activation'];
+    unset($_SESSION['one_time_activation']);
+
+    return $data;
+}
+
+function userHasPasswordSet($user)
+{
+    return isset($user['password_hash']) && $user['password_hash'] !== '' && $user['password_hash'] !== null;
+}
+
+function activationUrl($token)
+{
+    return BASE_URL . '/set_password.php?code=' . rawurlencode($token);
+}
+
+function absoluteUrl($path)
+{
+    $https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
+    $scheme = $https ? 'https' : 'http';
+    $host = 'localhost';
+    if (isset($_SERVER['HTTP_HOST']) && $_SERVER['HTTP_HOST'] !== '') {
+        $host = $_SERVER['HTTP_HOST'];
+    }
+
+    return $scheme . '://' . $host . $path;
+}
+
 function canEditCourse($pdo, $courseId)
 {
     if (isAdmin()) {

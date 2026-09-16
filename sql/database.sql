@@ -11,13 +11,31 @@ CREATE TABLE users (
     username VARCHAR(50) NOT NULL UNIQUE,
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255) NULL,
     role ENUM('employee', 'admin') NOT NULL DEFAULT 'employee',
     active TINYINT(1) NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     INDEX idx_users_role (role),
     INDEX idx_users_active (active)
+) ENGINE=InnoDB;
+
+
+-- Einmal-Aktivierungs- und Reset-Codes (nur Hash, nie Klartext)
+CREATE TABLE password_tokens (
+    token_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    token_hash CHAR(64) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    used_at DATETIME NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_password_tokens_hash (token_hash),
+    INDEX idx_password_tokens_user (user_id),
+
+    FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
 
@@ -149,6 +167,10 @@ CREATE TABLE bookings (
     FOREIGN KEY (created_by)
         REFERENCES users(user_id)
 ) ENGINE=InnoDB;
+
+-- Hinweis: bookings.course_id hat kein ON DELETE CASCADE.
+-- Vergangene Buchungen bleiben erhalten. Kurse mit Historie werden
+-- deshalb deaktiviert statt physisch gelöscht.
 
 
 -- Beispielsoftware für Tests und Zuordnungen

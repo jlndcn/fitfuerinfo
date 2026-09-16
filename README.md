@@ -32,6 +32,8 @@ C:\xampp\htdocs\fitfuerinfo
 
 Dadurch wird die Datenbank `fitfuerinfo_db` angelegt. Zusätzlich werden Beispiel-Softwareeinträge (z. B. Wireshark) importiert.
 
+Wenn die Datenbank schon existiert, zusätzlich `sql/update_password_tokens.sql` importieren.
+
 ## 5. Datenbankverbindung einrichten
 
 1. Die Datei `config/database.example.php` nach `config/database.php` kopieren.
@@ -96,8 +98,19 @@ fitfuerinfo/
     index.php            Weiterleitung Login/Dashboard
     login.php            Anmeldung
     logout.php           Abmeldung
+    set_password.php     Passwortvergabe durch den Mitarbeiter
     setup_admin.php      einmalige Erst-Einrichtung
 ```
+
+## Mitarbeiterpasswörter
+
+Der Administrator legt Mitarbeiter **ohne Passwort** an. Stattdessen erzeugt das System einen einmaligen Aktivierungscode.
+
+- Der Code wird nur als Hash gespeichert.
+- Der Klartext-Link wird dem Administrator **einmalig** angezeigt, damit er ihn dem Mitarbeiter geben kann.
+- Der Mitarbeiter setzt sein Passwort selbst unter `set_password.php`.
+- Danach ist der Code ungültig.
+- Der Administrator darf später kein Passwort setzen, sondern höchstens einen neuen Einmalcode erzeugen.
 
 ## Rollen kurz erklärt
 

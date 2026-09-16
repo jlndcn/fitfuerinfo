@@ -356,6 +356,16 @@ button:hover {
     margin-top: 0;
 }
 
+.token-box {
+    padding: 12px 14px;
+    background: #f0f4f8;
+    border: 1px solid #d9e2ec;
+    border-radius: 8px;
+    word-break: break-all;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 0.95rem;
+}
+
 .site-footer {
     background: #fff;
     border-top: 1px solid #d9e2ec;
