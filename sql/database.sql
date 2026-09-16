@@ -14,7 +14,10 @@ CREATE TABLE users (
     password_hash VARCHAR(255) NOT NULL,
     role ENUM('employee', 'admin') NOT NULL DEFAULT 'employee',
     active TINYINT(1) NOT NULL DEFAULT 1,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_users_role (role),
+    INDEX idx_users_active (active)
 ) ENGINE=InnoDB;
 
 
@@ -27,6 +30,9 @@ CREATE TABLE courses (
     created_by INT NOT NULL,
     active TINYINT(1) NOT NULL DEFAULT 1,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    INDEX idx_courses_created_by (created_by),
+    INDEX idx_courses_active (active),
 
     FOREIGN KEY (created_by)
         REFERENCES users(user_id)
@@ -129,6 +135,11 @@ CREATE TABLE bookings (
     end_time TIME NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
+    INDEX idx_bookings_room_date (room_id, booking_date),
+    INDEX idx_bookings_course (course_id),
+    INDEX idx_bookings_created_by (created_by),
+    INDEX idx_bookings_date (booking_date),
+
     FOREIGN KEY (room_id)
         REFERENCES rooms(room_id),
 
@@ -138,3 +149,13 @@ CREATE TABLE bookings (
     FOREIGN KEY (created_by)
         REFERENCES users(user_id)
 ) ENGINE=InnoDB;
+
+
+-- Beispielsoftware für Tests und Zuordnungen
+INSERT INTO software (software_name) VALUES
+('Wireshark'),
+('XAMPP'),
+('MySQL Workbench'),
+('Visual Studio Code'),
+('Cisco Packet Tracer'),
+('LibreOffice');
