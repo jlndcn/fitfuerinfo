@@ -1,11 +1,10 @@
 <?php
 
-session_start();
+require_once dirname(__FILE__) . '/includes/init.php';
 
 $_SESSION = array();
 
 if (ini_get('session.use_cookies')) {
-
     $params = session_get_cookie_params();
 
     setcookie(
@@ -21,5 +20,5 @@ if (ini_get('session.use_cookies')) {
 
 session_destroy();
 
-header('Location: login.php');
+header('Location: ' . BASE_URL . '/login.php');
 exit;

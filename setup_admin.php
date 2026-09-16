@@ -1,243 +1,118 @@
 <?php
 
-require_once 'config/database.php';
+require_once dirname(__FILE__) . '/includes/init.php';
 
 $message = '';
 $error = '';
+$adminExists = false;
 
+try {
+    $stmt = $pdo->prepare(
+        "SELECT user_id
+         FROM users
+         WHERE role = 'admin'
+         LIMIT 1"
+    );
+    $stmt->execute();
+    $adminExists = (bool) $stmt->fetch();
+} catch (PDOException $e) {
+    error_log('setup_admin Prüfung fehlgeschlagen: ' . $e->getMessage());
+    $error = 'Die Datenbank ist noch nicht eingerichtet. Bitte zuerst sql/database.sql importieren.';
+}
 
-// Prüfen, ob bereits ein Administrator existiert
-$stmt = $pdo->prepare(
-    "SELECT user_id
-     FROM users
-     WHERE role = 'admin'
-     LIMIT 1"
-);
-
-$stmt->execute();
-
-$adminExists = $stmt->fetch();
-
+$username = '';
+$firstName = '';
+$lastName = '';
 
 if ($adminExists) {
-
     $error = 'Es existiert bereits ein Systemverwalter.';
+} elseif ($error === '' && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
-} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
-
-    $username = isset($_POST['username'])
-        ? trim($_POST['username'])
-        : '';
-
-    $firstName = isset($_POST['first_name'])
-        ? trim($_POST['first_name'])
-        : '';
-
-    $lastName = isset($_POST['last_name'])
-        ? trim($_POST['last_name'])
-        : '';
-
-    $password = isset($_POST['password'])
-        ? $_POST['password']
-        : '';
-
-
-    // Pflichtfelder prüfen
-    if (
-        $username === '' ||
-        $firstName === '' ||
-        $lastName === '' ||
-        $password === ''
-    ) {
-
-        $error = 'Bitte alle Felder ausfüllen.';
-
-    // Passwortlänge prüfen
-    } elseif (strlen($password) < 4) {
-
-        $error = 'Das Passwort muss mindestens vier Zeichen lang sein.';
-
-    // Mindestens ein Kleinbuchstabe
-    } elseif (!preg_match('/[a-z]/', $password)) {
-
-        $error = 'Das Passwort muss mindestens einen Kleinbuchstaben enthalten.';
-
-    // Mindestens eine Zahl
-    } elseif (!preg_match('/[0-9]/', $password)) {
-
-        $error = 'Das Passwort muss mindestens eine Zahl enthalten.';
-
+    if (!isValidCsrf()) {
+        $error = 'Die Anfrage konnte nicht bestätigt werden. Bitte das Formular erneut absenden.';
     } else {
+        $username = postValue('username', '');
+        $firstName = postValue('first_name', '');
+        $lastName = postValue('last_name', '');
+        $password = isset($_POST['password']) ? $_POST['password'] : '';
 
-        // Passwort sicher hashen
-        $passwordHash = password_hash(
-            $password,
-            PASSWORD_DEFAULT
-        );
+        $passwordError = validatePassword($password);
 
+        if ($username === '' || $firstName === '' || $lastName === '' || $password === '') {
+            $error = 'Bitte alle Felder ausfüllen.';
+        } elseif ($passwordError !== '') {
+            $error = $passwordError;
+        } else {
+            $passwordHash = password_hash($password, PASSWORD_DEFAULT);
 
-        // Administrator speichern
-        $stmt = $pdo->prepare(
-            "INSERT INTO users
-                (
-                    username,
-                    first_name,
-                    last_name,
-                    password_hash,
-                    role,
-                    active
-                )
-             VALUES
-                (?, ?, ?, ?, 'admin', 1)"
-        );
-
-        try {
-
-            $stmt->execute(
-                array(
-                    $username,
-                    $firstName,
-                    $lastName,
-                    $passwordHash
-                )
+            $stmt = $pdo->prepare(
+                "INSERT INTO users
+                    (username, first_name, last_name, password_hash, role, active)
+                 VALUES
+                    (?, ?, ?, ?, 'admin', 1)"
             );
 
-            $message = 'Systemverwalter wurde erfolgreich angelegt.';
-
-        } catch (PDOException $e) {
-
-            $error = 'Der Systemverwalter konnte nicht angelegt werden.';
+            try {
+                $stmt->execute(
+                    array($username, $firstName, $lastName, $passwordHash)
+                );
+                $message = 'Systemverwalter wurde erfolgreich angelegt. Bitte setup_admin.php jetzt löschen oder umbenennen.';
+            } catch (PDOException $e) {
+                error_log('setup_admin Insert fehlgeschlagen: ' . $e->getMessage());
+                $error = 'Der Systemverwalter konnte nicht angelegt werden. Möglicherweise ist der Benutzername bereits vergeben.';
+            }
         }
     }
 }
 
 ?>
-
 <!DOCTYPE html>
 <html lang="de">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <title>FitFuerInfo - Einrichtung</title>
-
-    <link
-        rel="stylesheet"
-        href="assets/css/style.css"
-    >
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Einrichtung | FitFuerInfo</title>
+    <link rel="stylesheet" href="<?php echo e(BASE_URL); ?>/assets/css/style.css">
 </head>
-
-<body>
-
-    <div class="login-container">
-
+<body class="auth-body">
+    <div class="auth-card">
         <h1>FitFuerInfo</h1>
-
-        <h2>Systemverwalter einrichten</h2>
-
+        <p class="auth-subtitle">Erstmalige Einrichtung</p>
+        <h2>Systemverwalter anlegen</h2>
 
         <?php if ($error !== ''): ?>
-
-            <div class="error">
-
-                <?php
-                echo htmlspecialchars(
-                    $error,
-                    ENT_QUOTES,
-                    'UTF-8'
-                );
-                ?>
-
-            </div>
-
+            <div class="alert alert-error"><?php echo e($error); ?></div>
         <?php endif; ?>
-
 
         <?php if ($message !== ''): ?>
-
-            <p>
-                <?php
-                echo htmlspecialchars(
-                    $message,
-                    ENT_QUOTES,
-                    'UTF-8'
-                );
-                ?>
+            <div class="alert alert-success"><?php echo e($message); ?></div>
+            <p><a class="btn btn-primary" href="<?php echo e(BASE_URL); ?>/login.php">Zum Login</a></p>
+        <?php elseif (!$adminExists && strpos($error, 'Datenbank') === false): ?>
+            <p class="hint">
+                Das Passwort muss mindestens 4 Zeichen lang sein und
+                mindestens einen Kleinbuchstaben sowie eine Zahl enthalten.
             </p>
 
-            <p>
-                <a href="login.php">
-                    Zum Login
-                </a>
-            </p>
+            <form method="post" action="<?php echo e(BASE_URL); ?>/setup_admin.php">
+                <?php echo csrfField(); ?>
 
-        <?php elseif (!$adminExists): ?>
+                <label for="username">Benutzername</label>
+                <input type="text" id="username" name="username" value="<?php echo e($username); ?>" required>
 
-            <form
-                method="post"
-                action="setup_admin.php"
-            >
+                <label for="first_name">Vorname</label>
+                <input type="text" id="first_name" name="first_name" value="<?php echo e($firstName); ?>" required>
 
-                <label for="username">
-                    Benutzername
-                </label>
+                <label for="last_name">Nachname</label>
+                <input type="text" id="last_name" name="last_name" value="<?php echo e($lastName); ?>" required>
 
-                <input
-                    type="text"
-                    id="username"
-                    name="username"
-                    required
-                >
+                <label for="password">Passwort</label>
+                <input type="password" id="password" name="password" required>
 
-
-                <label for="first_name">
-                    Vorname
-                </label>
-
-                <input
-                    type="text"
-                    id="first_name"
-                    name="first_name"
-                    required
-                >
-
-
-                <label for="last_name">
-                    Nachname
-                </label>
-
-                <input
-                    type="text"
-                    id="last_name"
-                    name="last_name"
-                    required
-                >
-
-
-                <label for="password">
-                    Passwort
-                </label>
-
-                <input
-                    type="password"
-                    id="password"
-                    name="password"
-                    required
-                >
-
-
-                <button type="submit">
-                    Systemverwalter anlegen
-                </button>
-
+                <button type="submit" class="btn btn-primary">Systemverwalter anlegen</button>
             </form>
-
+        <?php elseif ($adminExists): ?>
+            <p><a class="btn btn-primary" href="<?php echo e(BASE_URL); ?>/login.php">Zum Login</a></p>
         <?php endif; ?>
-
     </div>
-
 </body>
-
 </html>

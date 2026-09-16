@@ -1,10 +1,5 @@
 <?php
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once dirname(__FILE__) . '/init.php';
 
-if (empty($_SESSION['user_id'])) {
-    header('Location: /fitfuerinfo/login.php');
-    exit;
-}
+requireLogin();
